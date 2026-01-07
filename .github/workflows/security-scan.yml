@@ -1,24 +1,46 @@
-name: Build, Static Scan, and Push Docker Image (Semgrep)
+name: Security Scans (Trivy)
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
-  build-scan-push:
+  security-scan:
+    name: Trivy Security Scan
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Trivy (official Action)
-      - name: Run Trivy scan on Docker image
-        uses: aquasecurity/trivy-action@master
+      # -----------------------------
+      # Vulnerability & IaC Scan
+      # -----------------------------
+      - name: Trivy Filesystem Scan (Vulnerabilities)
+        uses: aquasecurity/trivy-action@0.20.0
         with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/my-fastapi-app:latest
-          format: table
-          ignore-unfixed: true
-          exit-code: 1
+          scan-type: fs
+          scan-ref: .
           severity: HIGH,CRITICAL
+          exit-code: 1
+          ignore-unfixed: true
+          format: table
+
+      # -----------------------------
+      # Secrets Scan (PCI-sensitive data)
+      # -----------------------------
+      - name: Trivy Secrets Scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          exit-code: 1
+          format: table
